@@ -1,0 +1,3 @@
+[submodule "RadVcLib"]
+	path = RadVcLib
+	url = https://github.com/RadAd/RadVcLib.git
