@@ -2,3 +2,5 @@
 Bin/
 Int/
 *.VC.db
+*.ppm
+*.vcxproj.user
