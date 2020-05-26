@@ -1,9 +1,8 @@
-#include <fstream>
-#include <iostream>
 #include <cmath>
 #include <vector>
 #include <chrono>
 #include <cinttypes>
+#include <cstdio>
 
 #include "vectornd.h"
 
@@ -53,6 +52,11 @@ struct Ray
     Position3 origin;
     Vector3 direction;
     Ray(const Position3& origin, const Vector3& direction) : origin(origin), direction(direction) {}
+
+    Position3 at(double t) const
+    {
+        return origin + direction * t;
+    }
 };
 
 struct Sphere
@@ -164,7 +168,7 @@ struct Scene
         return o;
     }
 
-    bool inshadow(const Ray& rayLight, const Vector3& L) const
+    bool inShadow(const Ray& rayLight, const Vector3& L) const
     {
         // An optimization here is that the intersection loop can exit as soon as any object obsures it, dont necessarily have to find the closest
 #if 0
@@ -188,7 +192,6 @@ struct Scene
 
     Color3 lighting(const Position3 incidence, const Vector3 normal, const Vector3 rayDirection, const Material& mat) const
     {
-
         Color3 ambient(0, 0, 0);
         Color3 diffuse(0, 0, 0);
         Color3 specular(0, 0, 0);
@@ -202,7 +205,7 @@ struct Scene
         {
             const Vector3 L = l.pos - incidence;
             const Ray rayLight(incidence, normalize(L));
-            if (!inshadow(rayLight, L))
+            if (!inShadow(rayLight, L))
             {
                 ambient += l.prop.ambient * mat.ambient;
 
@@ -249,7 +252,7 @@ struct Scene
         {
             //return o->color;
 
-            const Position3 incidence = ray.origin + ray.direction * t;
+            const Position3 incidence = ray.at(t);
             const Vector3 N = normalize(o->geom.getNormal(incidence));
             // TODO Test incidence again with reflected ray for mirror objects
 
@@ -290,24 +293,23 @@ void SavePPM(const char* filename, const vectornd<Color3, 2>& data)
 {
     const vectornd<Color3, 2>::size_type s = data.size();
 
-    const int colors = 255;
+    const Color3::value_type colors = 255;
 
-    std::ofstream out(filename);
-    //std::ostream& out(std::cout);
-    out << "P3\n" << s[1] << ' ' << s[0] << ' ' << colors << '\n';
+    FILE* f;
+    fopen_s(&f, filename, "w");
+    fprintf(f, "P3\n%" PRId64 " %" PRId64 " %d\n", s[1], s[0], std::lrint(colors));
 
     vectornd<Color3, 2>::size_type i;
     for (i[0] = 0; i[0] < s[0]; ++i[0])
     {
         for (i[1] = 0; i[1] < s[1]; ++i[1])
         {
-            const Color3 pix_col = data[i] * Color3::value_type(colors);
+            const Color3 pix_col = data[i] * colors;
 
-            out << std::lrint(pix_col.r) << ' '
-                << std::lrint(pix_col.g) << ' '
-                << std::lrint(pix_col.b) << '\n';
+            fprintf(f, "%d %d %d\n", std::lrint(pix_col.r), std::lrint(pix_col.g), std::lrint(pix_col.b));
         }
     }
+    fclose(f);
 }
 
 int main()
@@ -369,7 +371,7 @@ int main()
         {
             for (i[1] = 0; i[1] < sz[1]; ++i[1])
             {
-                const double u = (2 * i[1] / (double) sz[1] - 1) * aspect;
+                const double u = (2 * i[1] / (double) sz[1] - 1) * aspect - (aspect - 1) / 2;
                 const double v = (2 * i[0] / (double) sz[0] - 1);
 
                 const Ray ray = camera.getRay(u, v);
