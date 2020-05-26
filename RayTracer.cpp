@@ -186,6 +186,61 @@ struct Scene
 #endif
     }
 
+    Color3 lighting(const Position3 incidence, const Vector3 normal, const Vector3 rayDirection, const Material& mat) const
+    {
+
+        Color3 ambient(0, 0, 0);
+        Color3 diffuse(0, 0, 0);
+        Color3 specular(0, 0, 0);
+
+        // if (false)
+        {
+            ambient += ambience * mat.ambient;
+        }
+
+        for (const Light& l : lights)
+        {
+            const Vector3 L = l.pos - incidence;
+            const Ray rayLight(incidence, normalize(L));
+            if (!inshadow(rayLight, L))
+            {
+                ambient += l.prop.ambient * mat.ambient;
+
+                // TOOD: diffuse and specular.
+                // See https://github.com/g-truc/glm/blob/master/manual.md#-84-lighting
+                // and https://learnopengl.com/Lighting/Materials
+
+                const double diff = dot(rayLight.direction, normal);
+                if (diff > 0)
+                {
+                    // if (isDiffuse)
+                    // if (false)
+                    {
+                        //Color3 light_col = l.color * diffuse;
+                        //Color3 light_col = l.color * glm::one_over_pi<double>() * diffuse * (1 / lenSq(L));
+                        Color3 light_col = l.prop.diffuse * diff * mat.diffuse;
+                        diffuse += light_col;
+                    }
+
+                    // if (isSpecular)
+                    // if (false)
+                    {
+                        const Vector3 reflect = glm::reflect(-rayLight.direction, normal);
+                        const Vector3 view = -rayDirection;
+                        const double specularA = dot(reflect, view);
+                        if (specularA > 0 && mat.shininess > 0)
+                        {
+                            const double specularB = pow(specularA, mat.shininess);
+                            specular += l.prop.specular * specularB * mat.specular;
+                        }
+                    }
+                }
+            }
+        }
+
+        return clamp(ambient + diffuse + specular, 0.0, 1.0);
+    }
+
     Color3 cast(const Ray& ray) const
     {
         double t;
@@ -198,56 +253,7 @@ struct Scene
             const Vector3 N = normalize(o->geom.getNormal(incidence));
             // TODO Test incidence again with reflected ray for mirror objects
 
-            Color3 ambient(0, 0, 0);
-            Color3 diffuse(0, 0, 0);
-            Color3 specular(0, 0, 0);
-
-            // if (false)
-            {
-                ambient += ambience * o->mat.ambient;
-            }
-
-            for (const Light& l : lights)
-            {
-                const Vector3 L = l.pos - incidence;
-                const Ray rayLight(incidence, normalize(L));
-                if (!inshadow(rayLight, L))
-                {
-                    ambient += l.prop.ambient * o->mat.ambient;
-
-                    // TOOD: diffuse and specular.
-                    // See https://github.com/g-truc/glm/blob/master/manual.md#-84-lighting
-                    // and https://learnopengl.com/Lighting/Materials
-
-                    const double diff = dot(rayLight.direction, N);
-                    if (diff > 0)
-                    {
-                        // if (isDiffuse)
-                        // if (false)
-                        {
-                            //Color3 light_col = l.color * diffuse;
-                            //Color3 light_col = l.color * glm::one_over_pi<double>() * diffuse * (1 / lenSq(L));
-                            Color3 light_col = l.prop.diffuse * diff * o->mat.diffuse;
-                            diffuse += light_col;
-                        }
-
-                        // if (isSpecular)
-                        // if (false)
-                        {
-                            const Vector3 reflect = glm::reflect(-rayLight.direction, N);
-                            const Vector3 view = -ray.direction;
-                            const double specularA = dot(reflect, view);
-                            if (specularA > 0 && o->mat.shininess > 0)
-                            {
-                                const double specularB = pow(specularA, o->mat.shininess);
-                                specular += l.prop.specular * specularB * o->mat.specular;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return clamp(ambient + diffuse + specular, 0.0, 1.0);
+            return lighting(incidence, N, ray.direction, o->mat);
         }
         else
             return bg;
@@ -335,9 +341,9 @@ int main()
 
     case 2:
         filename = "out2.ppm";
-        s.objs.push_back(Object(Sphere(Vector3(-0.3, 0, 3), 0.7), brass));
-        s.objs.push_back(Object(Sphere(Vector3(0.5, 0, 2.2), 0.2), jade));
-        s.lights.push_back(Light(Vector3(1.5, 0, 1.5), ltest));
+        s.objs.push_back(Object(Sphere(Vector3(-0.3, 0, 1.5), 0.7), brass));
+        s.objs.push_back(Object(Sphere(Vector3(0.5, 0, 0.7), 0.2), jade));
+        s.lights.push_back(Light(Vector3(1.5, 0, 0), ltest));
         break;
 
     case 3:
