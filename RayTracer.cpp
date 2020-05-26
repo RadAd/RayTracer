@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <chrono>
+#include <cinttypes>
 
 #include "vectornd.h"
 
@@ -354,19 +356,34 @@ int main()
 
     const double aspect = (double) sz[1] / sz[0];
 
-    vectornd<Color3, 2>::size_type i;
-    for (i[0] = 0; i[0] < sz[0]; ++i[0])
     {
-        for (i[1] = 0; i[1] < sz[1]; ++i[1])
+        const auto start = std::chrono::high_resolution_clock::now();
+        vectornd<Color3, 2>::size_type i;
+        for (i[0] = 0; i[0] < sz[0]; ++i[0])
         {
-            const double u = (2 * i[1] / (double) sz[1] - 1) * aspect;
-            const double v = (2 * i[0] / (double) sz[0] - 1);
+            for (i[1] = 0; i[1] < sz[1]; ++i[1])
+            {
+                const double u = (2 * i[1] / (double) sz[1] - 1) * aspect;
+                const double v = (2 * i[0] / (double) sz[0] - 1);
 
-            const Ray ray = camera.getRay(u, v);
+                const Ray ray = camera.getRay(u, v);
 
-            data[i] = s.cast(ray);
+                data[i] = s.cast(ray);
+            }
+
+            const double l = (double) i[0] / (sz[0] - 1);
+            fprintf(stderr, "\rRendering [%.*s%.*s] %6.2f%%", std::lrint(l * 20), "....................", 20 - std::lrint(l * 20), "                    ", l * 100);
         }
+
+        const auto stop = std::chrono::high_resolution_clock::now();
+        fprintf(stderr, " %" PRId64  " msec\n", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
     }
 
-    SavePPM(filename, data);
+    {
+        const auto start = std::chrono::high_resolution_clock::now();
+        fprintf(stderr, "Saving...");
+        SavePPM(filename, data);
+        const auto stop = std::chrono::high_resolution_clock::now();
+        fprintf(stderr, " %" PRId64  " msec\n", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+    }
 }
